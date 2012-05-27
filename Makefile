@@ -1,7 +1,7 @@
 CC=gcc
 
 LDFLAGS=
-CFLAGS=-g -Wall -Wextra -pedantic
+CFLAGS=-g -Wall -Wextra -Werror -pedantic
 
 VERSION=0.1
 
