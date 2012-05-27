@@ -7,4 +7,4 @@
 #define TCP_H_DEFINED
 int lookup(char *host, char *portnr, struct addrinfo **res);
 int connect_to(struct addrinfo *addr, struct timeval *rtt);
-#endif /* TCP_H_DEFINED */
+#endif				/* TCP_H_DEFINED */
