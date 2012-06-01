@@ -59,8 +59,8 @@ int main(int argc, char *argv[])
 			break;
 
 		case 't':
-            	  timeout = atoi(optarg);
-		  break;
+            	        timeout = atoi(optarg);
+		        break;
 
 		case 'i':
 			wait = atoi(optarg);
