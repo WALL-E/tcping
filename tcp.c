@@ -67,11 +67,16 @@ int connect_to(struct addrinfo *addr, struct timeval *rtt, int timeout)
 
 		FD_ZERO(&set);
 		FD_SET(fd, &set);
-		if(select(fd+1, NULL, &set, NULL, &tm) > 0){
-		  ret = write(fd, "z", 1);
-		  if(ret <0) goto next_addr1;
-		}else{
+		ret = select(fd+1, NULL, &set, NULL, &tm);
+		switch(ret){
+		case 0:/* timeout */
+		case -1:
 		  goto next_addr1;
+		  break;
+		default:/* Connection ok or refused*/
+		  ret = write(fd, "", 0);/* only test, no data send */
+		  if(ret <0) goto next_addr1;
+		  break;
 		}
 		
 		if (gettimeofday(rtt, NULL) == -1)
