@@ -14,16 +14,17 @@ static volatile int stop = 0;
 
 void usage(void)
 {
-	fprintf(stderr, "tcping version 0.2\n");
+	fprintf(stderr, "tcping version 0.3\n");
 
 	fprintf(stderr,
-		"Usage: tcping [-fqhv] [-p port] [-c count] [-i interval] destination\n");
+		"Usage: tcping [-fqhv] [-p port] [-c count] [-i interval] [-t timeout] destination\n");
 	fprintf(stderr,
 		"-p port		Port number (default port 80)\n");
 	fprintf(stderr, "-c count	How many times to connect\n");
 	fprintf(stderr, "-i interval	Delay between each connect\n");
 	fprintf(stderr, "-f		Flood connect (no delays)\n");
 	fprintf(stderr, "-q		Quiet, only returncode\n");
+	fprintf(stderr, "-t              Set timeout when connecting\n");
 	fprintf(stderr, "-h		This help text\n");
 }
 
@@ -41,12 +42,13 @@ int main(int argc, char *argv[])
 	int count = -1, curncount = 0;
 	int wait = 1, quiet = 0;
 	int ok = 0, err = 0;
+	int timeout = 3;
 	double min = 999999999999999.0, avg = 0.0, max = 0.0;
 	struct addrinfo *resolved;
 	int errcode;
 	int seen_addrnotavail;
 
-	while ((c = getopt(argc, argv, "hp:c:i:fq?")) != -1) {
+	while ((c = getopt(argc, argv, "t:hp:c:i:fq?")) != -1) {
 		switch (c) {
 		case 'p':
 			portnr = optarg;
@@ -55,6 +57,10 @@ int main(int argc, char *argv[])
 		case 'c':
 			count = atoi(optarg);
 			break;
+
+		case 't':
+            	  timeout = atoi(optarg);
+		  break;
 
 		case 'i':
 			wait = atoi(optarg);
@@ -76,7 +82,9 @@ int main(int argc, char *argv[])
 	}
 
 	if (optind >= argc) {
+	  /*
 		fprintf(stderr, "No hostname given\n");
+	  */
 		usage();
 		return 3;
 	}
@@ -97,11 +105,16 @@ int main(int argc, char *argv[])
 		double ms;
 		struct timeval rtt;
 
-		if ((errcode = connect_to(resolved, &rtt)) != 0) {
+		if ((errcode = connect_to(resolved, &rtt, timeout)) != 0) {
 			if (errcode != -EADDRNOTAVAIL) {
 				printf
-				    ("error connecting to host (%d): %s\n",
+				    ("error connecting to host (%d): %s",
 				     -errcode, strerror(-errcode));
+				if(-errcode == EINPROGRESS){
+				  printf(" [Timeout]\n");
+				}else{
+				  printf("\n");
+				}
 				err++;
 			} else {
 				if (seen_addrnotavail) {

@@ -24,12 +24,16 @@ int lookup(char *host, char *portnr, struct addrinfo **res)
 	return getaddrinfo(host, portnr, &hints, res);
 }
 
-int connect_to(struct addrinfo *addr, struct timeval *rtt)
+int connect_to(struct addrinfo *addr, struct timeval *rtt, int timeout)
 {
 	int fd;
 	struct timeval start;
 	int connect_result;
 	const int on = 1;
+	struct timeval tm;
+	fd_set set;
+	int flags;
+	int ret;
 	/* int flags; */
 	int rv = 0;
 
@@ -43,32 +47,46 @@ int connect_to(struct addrinfo *addr, struct timeval *rtt)
 		if (setsockopt
 		    (fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
 			goto next_addr1;
-#if 0
+
 		if ((flags = fcntl(fd, F_GETFL, 0)) == -1)
 			goto next_addr1;
 		if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
 			goto next_addr1;
-#endif
+
 		if (gettimeofday(&start, NULL) == -1)
 			goto next_addr1;
 
 		/* connect to peer */
-		if ((connect_result =
-		     connect(fd, addr->ai_addr, addr->ai_addrlen)) == 0) {
-			if (gettimeofday(rtt, NULL) == -1)
-				goto next_addr1;
-			rtt->tv_sec = rtt->tv_sec - start.tv_sec;
-			rtt->tv_usec = rtt->tv_usec - start.tv_usec;
-			close(fd);
-			return 0;
+		connect_result = connect(fd, addr->ai_addr, addr->ai_addrlen);
+		if (connect_result == -1 && errno != EINPROGRESS) {
+		  goto next_addr1;
 		}
+			
+		tm.tv_sec  = timeout;
+		tm.tv_usec = 0;
 
-	      next_addr1:
+		FD_ZERO(&set);
+		FD_SET(fd, &set);
+		if(select(fd+1, NULL, &set, NULL, &tm) > 0){
+		  ret = write(fd, "z", 1);
+		  if(ret <0) goto next_addr1;
+		}else{
+		  goto next_addr1;
+		}
+		
+		if (gettimeofday(rtt, NULL) == -1)
+		  goto next_addr1;
+		rtt->tv_sec = rtt->tv_sec - start.tv_sec;
+		rtt->tv_usec = rtt->tv_usec - start.tv_usec;
 		close(fd);
-	      next_addr0:
+		return 0;
+	
+	next_addr1:
+		close(fd);
+	next_addr0:
 		addr = addr->ai_next;
 	}
-
+	
 	rv = rv ? rv : -errno;
 	return rv;
 }
